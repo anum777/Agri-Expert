@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agri Expert - Smart Crop Advisory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+git remote -v
+git branch --show-currentgit remote -v
+git branch --show-current
+  <nav class="navbar">
+    <div class="container">
+      <div class="brand-block">
+        <p class="eyebrow">Precision Farming Assistant</p>
+        <h1 class="logo">🌱 Agri Expert</h1>
+        <p class="tagline">Smart crop recommendations powered by soil science and weather intelligence.</p>
+      </div>
+      <div class="hero-stats" aria-label="Platform highlights">
+        <div class="stat-pill">🧪 NPK Analysis</div>
+        <div class="stat-pill">🌤️ Weather Inputs</div>
+        <div class="stat-pill">🤖 ML Recommendation</div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="content-wrapper">
+      <!-- Input Section -->
+      <section class="input-section">
+        <div class="section-header">
+          <h2>📊 Soil & Weather Profile</h2>
+          <p>Provide field conditions to generate the best crop match.</p>
+        </div>
+
+        <form id="predictionForm" class="form">
+          <!-- Location Section -->
+          <fieldset class="form-section location-section">
+            <legend>📍 Location & Weather Details</legend>
+            <p class="location-intro">Use your current location to auto-detect coordinates, city, and weather inputs.</p>
+
+            <div class="location-actions">
+              <button type="button" class="btn btn-tertiary" id="getLocationBtn">
+                <span id="getLocationBtnLabel">Get Location and Weather Details</span>
+              </button>
+            </div>
+
+            <div id="locationDisplay" class="location-display hidden" aria-live="polite">
+              <div class="location-item">
+                <span class="location-label">Coordinates</span>
+                <span id="locationCoordinates" class="location-value">--</span>
+              </div>
+              <div class="location-item">
+                <span class="location-label">Detected Place</span>
+                <span id="locationName" class="location-value">--</span>
+              </div>
+              <div class="location-item">
+                <span class="location-label">Weather Autofill</span>
+                <span id="weatherAutofillStatus" class="location-value">Not fetched yet</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- NPK Section -->
+          <fieldset class="form-section">
+            <legend>🌍 Soil NPK Values</legend>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="nitrogen">Nitrogen (N) <span class="unit">mg/kg</span></label>
+                <input 
+                  type="number" 
+                  id="nitrogen" 
+                  name="nitrogen" 
+                  min="0" 
+                  max="140" 
+                  step="0.1" 
+                  placeholder="0-140" 
+                  required
+                >
+                <span class="help-text">Healthy range: 0-140</span>
+              </div>
+
+              <div class="form-group">
+                <label for="phosphorus">Phosphorus (P) <span class="unit">mg/kg</span></label>
+                <input 
+                  type="number" 
+                  id="phosphorus" 
+                  name="phosphorus" 
+                  min="0" 
+                  max="145" 
+                  step="0.1" 
+                  placeholder="0-145" 
+                  required
+                >
+                <span class="help-text">Healthy range: 0-145</span>
+              </div>
+
+              <div class="form-group">
+                <label for="potassium">Potassium (K) <span class="unit">mg/kg</span></label>
+                <input 
+                  type="number" 
+                  id="potassium" 
+                  name="potassium" 
+                  min="0" 
+                  max="205" 
+                  step="0.1" 
+                  placeholder="0-205" 
+                  required
+                >
+                <span class="help-text">Healthy range: 0-205</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Weather Section -->
+          <fieldset class="form-section">
+            <legend>🌤️ Weather Conditions</legend>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="temperature">Temperature <span class="unit">°C</span></label>
+                <input 
+                  type="number" 
+                  id="temperature" 
+                  name="temperature" 
+                  min="-8" 
+                  max="50" 
+                  step="0.1" 
+                  placeholder="-8 to 50" 
+                  required
+                >
+                <span class="help-text">Range: -8 to 50</span>
+              </div>
+
+              <div class="form-group">
+                <label for="humidity">Humidity <span class="unit">%</span></label>
+                <input 
+                  type="number" 
+                  id="humidity" 
+                  name="humidity" 
+                  min="0" 
+                  max="100" 
+                  step="0.1" 
+                  placeholder="0-100" 
+                  required
+                >
+                <span class="help-text">Range: 0-100</span>
+              </div>
+
+              <div class="form-group">
+                <label for="rainfall">Rainfall <span class="unit">mm</span></label>
+                <input 
+                  type="number" 
+                  id="rainfall" 
+                  name="rainfall" 
+                  min="0" 
+                  max="300" 
+                  step="0.1" 
+                  placeholder="0-300" 
+                  required
+                >
+                <span class="help-text">Range: 0-300</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <button type="submit" class="btn btn-primary" id="submitBtn">
+            <span>Get Crop Recommendation</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Result Section -->
+      <section id="resultSection" class="result-section hidden">
+        <div class="section-header">
+          <h2>✅ Recommendation Result</h2>
+          <p>Based on your field profile and current weather conditions.</p>
+        </div>
+
+        <div id="resultCard" class="result-card">
+          <div class="result-main">
+            <div class="crop-icon">🌾</div>
+            <div class="crop-info">
+              <h3 id="cropName">Rice</h3>
+              <p class="confidence-label">Confidence Level</p>
+              <div class="confidence-bar">
+                <div id="confidenceBar" class="confidence-fill"></div>
+              </div>
+              <p id="confidenceText" class="confidence-text">95%</p>
+            </div>
+          </div>
+
+          <div class="result-details">
+            <h4>Your Input Parameters</h4>
+            <div class="params-grid">
+              <div class="param-item">
+                <span class="param-label">Nitrogen</span>
+                <span id="resultN" class="param-value">--</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">Phosphorus</span>
+                <span id="resultP" class="param-value">--</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">Potassium</span>
+                <span id="resultK" class="param-value">--</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">Temperature</span>
+                <span id="resultTemp" class="param-value">--</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">Humidity</span>
+                <span id="resultHum" class="param-value">--</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">Rainfall</span>
+                <span id="resultRain" class="param-value">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick="resetForm()">
+          Try Another Prediction
+        </button>
+      </section>
+
+      <!-- Error Section -->
+      <div id="errorContainer" class="error-container" aria-live="polite"></div>
+
+      <!-- Loading Spinner -->
+      <div id="loadingSpinner" class="spinner hidden"></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2024 Agri Expert. Helping farmers make better crop decisions.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
