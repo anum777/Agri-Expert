@@ -1,0 +1,1 @@
+// Backup of original main.dart - auto-generated backup before simplification
