@@ -6,7 +6,7 @@ class CropPredictionService {
   // BACKEND URL CONFIGURATION
   // Set the deployed Render URL here after deployment:
   // ============================================================
-  static const String _deployedUrl = 'https://REPLACE_WITH_YOUR_RENDER_URL.onrender.com';
+  static const String _deployedUrl = 'https://agri-expert-api.onrender.com';
 
   // For local development override: pass --dart-define=BACKEND_URL=http://localhost:8000
   static const String backendUrl = String.fromEnvironment(
