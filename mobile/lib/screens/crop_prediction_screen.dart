@@ -36,10 +36,22 @@ class _CropPredictionScreenState extends State<CropPredictionScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
+      _predictionMade = false;
     });
 
     try {
-      // Fetch NPK data from backend (sent by ESP32)
+      // Check backend connectivity first
+      final isAvailable = await CropPredictionService.isBackendAvailable();
+      if (!isAvailable) {
+        setState(() {
+          _errorMessage =
+              '⚠️ Cannot reach the server.\n\nMake sure the backend is running and your internet connection is active.\n\nURL: ${CropPredictionService.backendUrl}';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Fetch NPK data from backend (sent by ESP32 or default values)
       final npkData = await CropPredictionService.getNPKData();
       if (npkData != null) {
         setState(() {
@@ -48,12 +60,14 @@ class _CropPredictionScreenState extends State<CropPredictionScreen> {
           _potassium = (npkData['potassium'] ?? 0).toDouble();
         });
       } else {
-        setState(() => _errorMessage = 'Failed to fetch NPK sensor data');
+        setState(() {
+          _errorMessage = '❌ Failed to fetch NPK sensor data from backend.';
+          _isLoading = false;
+        });
         return;
       }
 
-      // Fetch weather data
-      // You'll need to get latitude/longitude from your app's LocationScreen
+      // Fetch weather data (uses open-meteo free API as fallback)
       final weatherData = await WeatherService().fetchWeather(
         28.7041,
         77.1025,
@@ -63,7 +77,6 @@ class _CropPredictionScreenState extends State<CropPredictionScreen> {
         setState(() {
           _temperature = (weatherData['main']['temp'] ?? 20).toDouble();
           _humidity = (weatherData['main']['humidity'] ?? 50).toDouble();
-          // Rainfall - check if available
           _rainfall = 0.0;
           if (weatherData['rain'] != null) {
             if (weatherData['rain']['1h'] != null) {
@@ -74,7 +87,10 @@ class _CropPredictionScreenState extends State<CropPredictionScreen> {
           }
         });
       } else {
-        setState(() => _errorMessage = 'Failed to fetch weather data');
+        setState(() {
+          _errorMessage = '❌ Failed to fetch weather data. Check internet connection.';
+          _isLoading = false;
+        });
         return;
       }
 
@@ -88,7 +104,12 @@ class _CropPredictionScreenState extends State<CropPredictionScreen> {
         rainfall: _rainfall,
       );
 
-      if (prediction != null) {
+      if (prediction != null && prediction.containsKey('error')) {
+        setState(() {
+          _errorMessage = '❌ ${prediction['error']}';
+          _isLoading = false;
+        });
+      } else if (prediction != null) {
         setState(() {
           _recommendedCrop = prediction['recommended_crop'] ?? 'Unknown';
           _confidence = (prediction['confidence'] ?? 0).toDouble();
@@ -97,13 +118,13 @@ class _CropPredictionScreenState extends State<CropPredictionScreen> {
         });
       } else {
         setState(() {
-          _errorMessage = 'Failed to get crop prediction';
+          _errorMessage = '❌ Failed to get crop prediction. Server may be starting up (wait 30s and retry).';
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error: $e';
+        _errorMessage = '❌ Unexpected error: $e';
         _isLoading = false;
       });
     }
