@@ -37,6 +37,10 @@ API_KEY = os.getenv('OPENWEATHER_API_KEY')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+MARKET_PRICE_API_URL = os.getenv('MARKET_PRICE_API_URL', '').strip()
+MARKET_PRICE_API_KEY = os.getenv('MARKET_PRICE_API_KEY', '').strip()
 
 # Validate that required environment variables are set
 if not API_KEY:
@@ -50,6 +54,7 @@ import joblib
 import numpy as np
 import requests
 from datetime import datetime
+from typing import Any
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -144,6 +149,24 @@ class NPKSensorInput(BaseModel):
     phosphorus: float
     potassium: float
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class FertilizerRecommendationInput(BaseModel):
+    crop: str = Field(..., min_length=2, max_length=80)
+    nitrogen: float = Field(..., ge=0)
+    phosphorus: float = Field(..., ge=0)
+    potassium: float = Field(..., ge=0)
+    ph: float = Field(default=6.5, ge=3.5, le=9.5)
+
+
+class MarketPriceQuery(BaseModel):
+    crop: str = Field(..., min_length=2, max_length=80)
+    location: str = Field(default="India", min_length=2, max_length=120)
+
+
+class ChatInput(BaseModel):
+    message: str = Field(..., min_length=2, max_length=2000)
+    history: list[dict[str, str]] = Field(default_factory=list, max_length=20)
 
 
 # ============================================================================
@@ -350,6 +373,147 @@ def update_sensor(data: NPKSensorInput):
         "timestamp": data.timestamp
     }
     return {"status": "success", "data": latest_npk_data}
+
+
+# ============================================================================
+# FARMING ADVISORY FEATURES
+# ============================================================================
+
+@app.post("/fertilizer/recommend")
+def fertilizer_recommendation(data: FertilizerRecommendationInput):
+    """Return screening-level nutrient guidance from soil-test NPK values."""
+    # These screening bands are deliberately conservative and are not a
+    # substitute for a local soil laboratory or agronomist recommendation.
+    thresholds = {
+        "nitrogen": (40, 80, "Nitrogen"),
+        "phosphorus": (20, 60, "Phosphorus"),
+        "potassium": (20, 80, "Potassium"),
+    }
+    values = {
+        "nitrogen": data.nitrogen,
+        "phosphorus": data.phosphorus,
+        "potassium": data.potassium,
+    }
+    deficiencies = []
+    guidance = []
+    for key, (low, adequate, label) in thresholds.items():
+        value = values[key]
+        status = "low" if value < low else ("adequate" if value <= adequate else "high")
+        if status == "low":
+            deficiencies.append({
+                "nutrient": label,
+                "value": value,
+                "status": status,
+                "action": f"Use a {label.lower()}-containing fertilizer only after confirming the soil-test result.",
+            })
+            guidance.append(f"{label} appears low; consider a suitable {label.lower()} source.")
+        elif status == "high":
+            guidance.append(f"{label} is already high; avoid adding more without professional advice.")
+
+    if not deficiencies:
+        guidance.append("No clear NPK deficiency was detected by these screening bands.")
+
+    return {
+        "crop": data.crop.strip(),
+        "nutrient_status": [
+            {
+                "nutrient": label,
+                "value": values[key],
+                "status": "low" if values[key] < low else (
+                    "adequate" if values[key] <= adequate else "high"
+                ),
+            }
+            for key, (low, adequate, label) in thresholds.items()
+        ],
+        "deficiencies": deficiencies,
+        "guidance": guidance,
+        "ph": data.ph,
+        "source": "Screening bands informed by general extension soil-test guidance; verify locally.",
+        "disclaimer": "This is general educational guidance, not a prescription. Confirm units, field area, crop stage, and application rates with a soil laboratory or agricultural professional.",
+    }
+
+
+@app.post("/market-prices")
+def market_prices(query: MarketPriceQuery):
+    """Proxy a configured official market-price adapter without inventing prices."""
+    if not MARKET_PRICE_API_URL:
+        return {
+            "status": "unavailable",
+            "message": "Verified market-price integration is not configured yet.",
+            "source": "Agmarknet (configuration required)",
+            "crop": query.crop,
+            "location": query.location,
+            "records": [],
+        }
+
+    try:
+        params = {"crop": query.crop, "location": query.location}
+        headers = {"Accept": "application/json"}
+        if MARKET_PRICE_API_KEY:
+            headers["X-API-Key"] = MARKET_PRICE_API_KEY
+        response = requests.get(MARKET_PRICE_API_URL, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+        records = payload.get("records", payload if isinstance(payload, list) else [])
+        if not isinstance(records, list):
+            raise ValueError("Market adapter returned an invalid records shape")
+        return {
+            "status": "available" if records else "unavailable",
+            "source": payload.get("source", "Agmarknet") if isinstance(payload, dict) else "Agmarknet",
+            "crop": query.crop,
+            "location": query.location,
+            "records": records,
+        }
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[ERROR] Market price lookup failed: {exc}")
+        return {
+            "status": "unavailable",
+            "message": "Verified market prices are temporarily unavailable.",
+            "source": "Agmarknet",
+            "crop": query.crop,
+            "location": query.location,
+            "records": [],
+        }
+
+
+@app.post("/chat")
+def agricultural_chat(data: ChatInput):
+    """Answer farming questions using Gemini while keeping credentials server-side."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=503, detail="AI chat is not configured on the server.")
+
+    contents: list[dict[str, Any]] = []
+    for item in data.history:
+        role = item.get("role")
+        text = item.get("text", "").strip()
+        if role in {"user", "model"} and text:
+            contents.append({"role": role, "parts": [{"text": text}]})
+    contents.append({"role": "user", "parts": [{"text": data.message.strip()}]})
+    body = {
+        "system_instruction": {
+            "parts": [{
+                "text": "You are Agri Expert, a helpful agricultural assistant. "
+                "Give clear, practical, region-aware answers. Do not invent market prices "
+                "or diagnose crop disease with certainty. Recommend a local agriculture "
+                "officer, soil lab, or plant pathologist when professional assessment is needed."
+            }]
+        },
+        "contents": contents,
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 700},
+    }
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    )
+    try:
+        response = requests.post(url, json=body, timeout=30)
+        response.raise_for_status()
+        payload = response.json()
+        text = payload["candidates"][0]["content"]["parts"][0]["text"]
+        return {"answer": text, "source": "Google Gemini", "professional_guidance_note": True}
+    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
+        print(f"[ERROR] AI chat failed: {exc}")
+        raise HTTPException(status_code=503, detail="AI chat is temporarily unavailable.")
 
 
 # ============================================================================

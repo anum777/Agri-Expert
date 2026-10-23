@@ -9,6 +9,7 @@ import 'l10n/app_localizations.dart';
 import 'services/firebase_service.dart';
 import 'services/crop_prediction_service.dart';
 import 'services/weather_service.dart';
+import 'screens/advisory_screens.dart';
 import 'theme/app_theme.dart';
 import 'firebase_options.dart';
 
@@ -469,6 +470,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             },
                             icon: const Icon(Icons.explore_outlined),
                             label: Text(l10n.tr('getLocationWeather')),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const FertilizerScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.science_outlined),
+                                label: const Text('Fertilizer Advice'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const MarketPricesScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.storefront_outlined),
+                                label: const Text('Market Prices'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const AgriculturalChatScreen(),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.chat_outlined),
+                                label: const Text('Ask Agri Expert'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

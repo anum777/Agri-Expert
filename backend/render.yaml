@@ -13,3 +13,11 @@ services:
         value: INFO
       - key: OPENWEATHER_API_KEY
         sync: false   # Set this manually in Render dashboard
+      - key: GEMINI_API_KEY
+        sync: false   # Set this manually in Render dashboard
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: MARKET_PRICE_API_URL
+        sync: false   # Configure an official Agmarknet adapter when available
+      - key: MARKET_PRICE_API_KEY
+        sync: false
