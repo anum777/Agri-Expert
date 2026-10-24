@@ -16,14 +16,17 @@ class _FertilizerScreenState extends State<FertilizerScreen> {
   bool _loading = false;
 
   Future<void> _recommend() async {
-    if (_crop.text.trim().isEmpty) return;
+    if (_crop.text.trim().isEmpty) {
+      _showError('Please enter a crop name.');
+      return;
+    }
     setState(() => _loading = true);
     try {
       final result = await AdvisoryService.fertilizerRecommendation(
         crop: _crop.text.trim(),
-        nitrogen: double.parse(_n.text),
-        phosphorus: double.parse(_p.text),
-        potassium: double.parse(_k.text),
+        nitrogen: _parseValue(_n, 'nitrogen'),
+        phosphorus: _parseValue(_p, 'phosphorus'),
+        potassium: _parseValue(_k, 'potassium'),
       );
       if (mounted) setState(() => _result = result);
     } catch (error) {
@@ -36,6 +39,14 @@ class _FertilizerScreenState extends State<FertilizerScreen> {
   void _showError(Object error) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('$error')));
+  }
+
+  double _parseValue(TextEditingController controller, String label) {
+    final value = double.tryParse(controller.text.trim());
+    if (value == null || value < 0) {
+      throw FormatException('Enter a valid non-negative $label value.');
+    }
+    return value;
   }
 
   @override
@@ -103,7 +114,12 @@ class _MarketPricesScreenState extends State<MarketPricesScreen> {
   bool _loading = false;
 
   Future<void> _search() async {
-    if (_crop.text.trim().isEmpty) return;
+    if (_crop.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a crop name.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final result = await AdvisoryService.marketPrices(
@@ -135,7 +151,10 @@ class _MarketPricesScreenState extends State<MarketPricesScreen> {
               child: Text(_loading ? 'Checking...' : 'Find verified prices')),
           if (_result != null) ...[
             const SizedBox(height: 20),
-            Text('Source: ${_result!['source']}'),
+            Text(
+              'Status: ${_result!['status']}\nSource: ${_result!['source']}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             if (_result!['status'] != 'available')
               const Card(
                   child: Padding(

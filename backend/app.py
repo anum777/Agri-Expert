@@ -38,7 +38,7 @@ ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
 MARKET_PRICE_API_URL = os.getenv('MARKET_PRICE_API_URL', '').strip()
 MARKET_PRICE_API_KEY = os.getenv('MARKET_PRICE_API_KEY', '').strip()
 
@@ -507,7 +507,12 @@ def agricultural_chat(data: ChatInput):
     )
     try:
         response = requests.post(url, json=body, timeout=30)
-        response.raise_for_status()
+        if response.status_code != 200:
+            print(f"[ERROR] Gemini returned {response.status_code}: {response.text[:500]}")
+            raise HTTPException(
+                status_code=503,
+                detail="AI chat provider rejected the request. Check the server model and API key settings.",
+            )
         payload = response.json()
         text = payload["candidates"][0]["content"]["parts"][0]["text"]
         return {"answer": text, "source": "Google Gemini", "professional_guidance_note": True}
