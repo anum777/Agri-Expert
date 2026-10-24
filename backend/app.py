@@ -38,7 +38,7 @@ ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.8-flash')
 MARKET_PRICE_API_URL = os.getenv('MARKET_PRICE_API_URL', '').strip()
 MARKET_PRICE_API_KEY = os.getenv('MARKET_PRICE_API_KEY', '').strip()
 
