@@ -381,13 +381,38 @@ def update_sensor(data: NPKSensorInput):
 
 @app.post("/fertilizer/recommend")
 def fertilizer_recommendation(data: FertilizerRecommendationInput):
-    """Return screening-level nutrient guidance from soil-test NPK values."""
-    # These screening bands are deliberately conservative and are not a
-    # substitute for a local soil laboratory or agronomist recommendation.
-    thresholds = {
-        "nitrogen": (40, 80, "Nitrogen"),
-        "phosphorus": (20, 60, "Phosphorus"),
-        "potassium": (20, 80, "Potassium"),
+    """Return crop-aware, screening-level nutrient guidance."""
+    # These bands are deliberately conservative and are not a substitute for
+    # a local soil laboratory or agronomist recommendation.
+    crop_key = data.crop.strip().lower().replace("-", " ").replace("_", " ")
+    crop_profiles = {
+        "rice": {"nitrogen": (50, 100), "phosphorus": (25, 60), "potassium": (30, 90)},
+        "maize": {"nitrogen": (55, 105), "phosphorus": (25, 65), "potassium": (30, 85)},
+        "wheat": {"nitrogen": (50, 95), "phosphorus": (25, 60), "potassium": (25, 75)},
+        "cotton": {"nitrogen": (45, 85), "phosphorus": (25, 60), "potassium": (35, 95)},
+        "jute": {"nitrogen": (45, 85), "phosphorus": (20, 55), "potassium": (25, 75)},
+        "coffee": {"nitrogen": (45, 90), "phosphorus": (20, 55), "potassium": (35, 95)},
+        "banana": {"nitrogen": (55, 100), "phosphorus": (20, 55), "potassium": (55, 120)},
+        "coconut": {"nitrogen": (40, 80), "phosphorus": (20, 50), "potassium": (50, 110)},
+        "sugarcane": {"nitrogen": (60, 115), "phosphorus": (25, 65), "potassium": (40, 100)},
+        "chickpea": {"nitrogen": (20, 50), "phosphorus": (25, 65), "potassium": (20, 65)},
+        "lentil": {"nitrogen": (20, 50), "phosphorus": (25, 65), "potassium": (20, 65)},
+        "pigeonpeas": {"nitrogen": (20, 50), "phosphorus": (25, 65), "potassium": (20, 65)},
+        "pigeon peas": {"nitrogen": (20, 50), "phosphorus": (25, 65), "potassium": (20, 65)},
+        "mungbean": {"nitrogen": (15, 45), "phosphorus": (25, 60), "potassium": (20, 60)},
+        "green gram": {"nitrogen": (15, 45), "phosphorus": (25, 60), "potassium": (20, 60)},
+        "groundnut": {"nitrogen": (20, 50), "phosphorus": (25, 65), "potassium": (25, 70)},
+    }
+    selected_profile = crop_profiles.get(crop_key)
+    thresholds = selected_profile or {
+        "nitrogen": (40, 80),
+        "phosphorus": (20, 60),
+        "potassium": (20, 80),
+    }
+    nutrient_labels = {
+        "nitrogen": "Nitrogen",
+        "phosphorus": "Phosphorus",
+        "potassium": "Potassium",
     }
     values = {
         "nitrogen": data.nitrogen,
@@ -396,7 +421,8 @@ def fertilizer_recommendation(data: FertilizerRecommendationInput):
     }
     deficiencies = []
     guidance = []
-    for key, (low, adequate, label) in thresholds.items():
+    for key, (low, adequate) in thresholds.items():
+        label = nutrient_labels[key]
         value = values[key]
         status = "low" if value < low else ("adequate" if value <= adequate else "high")
         if status == "low":
@@ -404,7 +430,10 @@ def fertilizer_recommendation(data: FertilizerRecommendationInput):
                 "nutrient": label,
                 "value": value,
                 "status": status,
-                "action": f"Use a {label.lower()}-containing fertilizer only after confirming the soil-test result.",
+                "action": (
+                    f"Use a {label.lower()}-containing fertilizer only after confirming "
+                    "the soil-test result and crop growth stage."
+                ),
             })
             guidance.append(f"{label} appears low; consider a suitable {label.lower()} source.")
         elif status == "high":
@@ -417,17 +446,18 @@ def fertilizer_recommendation(data: FertilizerRecommendationInput):
         "crop": data.crop.strip(),
         "nutrient_status": [
             {
-                "nutrient": label,
+                "nutrient": nutrient_labels[key],
                 "value": values[key],
                 "status": "low" if values[key] < low else (
                     "adequate" if values[key] <= adequate else "high"
                 ),
             }
-            for key, (low, adequate, label) in thresholds.items()
+            for key, (low, adequate) in thresholds.items()
         ],
         "deficiencies": deficiencies,
         "guidance": guidance,
         "ph": data.ph,
+        "profile": "crop-specific" if selected_profile else "general screening",
         "source": "Screening bands informed by general extension soil-test guidance; verify locally.",
         "disclaimer": "This is general educational guidance, not a prescription. Confirm units, field area, crop stage, and application rates with a soil laboratory or agricultural professional.",
     }
